@@ -74,6 +74,12 @@ font-size: large;
 width: 15%;
 }
 
+#addSize {
+    font-size: large;
+    width: 15%;
+    margin-right: 70px;
+}
+
 #formButton {
 background-color: #1a1a1a;
 margin-left: 7%;
@@ -114,5 +120,24 @@ margin-bottom: 1px;
 
 
 .view {
+    font-size: large;
+}
+
+.filterForm {
+    font-size: large;
+    margin-bottom: 20px;
+}
+
+#filter {
+    font-size: large;
+}
+
+#chartButton {
+    font-size: large;
+    margin-top: 20px;
+}
+
+#backToMenu {
+    margin-top: 20px;
     font-size: large;
 }

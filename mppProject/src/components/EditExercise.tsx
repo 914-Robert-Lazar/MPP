@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Exercise, { createExercise } from '../model/Exercise.ts';
-import { validateForm } from '../validators/validateForm.js';
+import { validateExerciseForm } from '../validators/validateForm.js';
+import Exercise from '../model/Exercise.js';
 
-export function EditExercise({exercises, setExercises} :{exercises: Exercise[], 
-    setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
+export function EditExercise({backendUrl, setExercises} :{backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
 
-    const [exercise, setExercise] = useState(createExercise("", "", 0))
+    const [exercise, setExercise] = useState({name: "", type: "", level: 0})
     const navigate = useNavigate()
     const params = useParams()
 
@@ -21,19 +20,26 @@ export function EditExercise({exercises, setExercises} :{exercises: Exercise[],
         setExercise((prevFormData) => ({...prevFormData, [name]: value}))
     }
 
-    const handleSubmit = (event: React.SyntheticEvent) => {
+    const handleSubmit = async (event: React.SyntheticEvent) => {
         event.preventDefault();
         exercise.level = Number(exercise.level);
-        if (!validateForm(exercise.name, exercise.type, exercise.level)) {
+        if (!validateExerciseForm(exercise.name, exercise.type, exercise.level)) {
             return;
         }
     
-        for (let i = 0; i < exercises.length; ++i) {
-            if (exercises[i].id == parseInt(params.id!)) {
-                exercises[i] = exercise;
-            }
-        }
-        setExercises(exercises);
+        await fetch(`${backendUrl}/${parseInt(params.id!)}`, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json'},
+            body: JSON.stringify(exercise)
+        })
+        .catch(error => console.error("Error fetching add exercise", error))
+
+        await fetch(backendUrl, {
+            method: 'GET'
+        })
+        .then(response => response.json())
+        .then(data => setExercises(data))
+        .catch(error => console.error("Error fetching delete", error))
         navigate("/exercises");
     }
 

@@ -4,21 +4,38 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Exercise from '../model/Exercise';
+import { useEffect } from 'react';
 
-export function DeleteDialog({deleteDialogOpen, setDeleteDialogOpen, selectedRow, exercises, setExercises} : 
-    {deleteDialogOpen: boolean, setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>, selectedRow: number,
-         exercises: Exercise[], setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
+export function DeleteDialog({deleteDialogOpen, setDeleteDialogOpen, selectedRow, backendUrl, deleteUrl, setExercises} : 
+    {deleteDialogOpen: boolean, setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>, 
+        selectedRow: number, backendUrl: string, deleteUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
             
     function handleClose() {
         setDeleteDialogOpen(false);
     }
 
-    function handleConfirmedDelete() {
-        exercises = exercises.filter((exercise) => exercise.id != selectedRow);
-        setExercises(exercises);
-        // setTable(getExercises(exercises));
+    async function  handleConfirmedDelete() {
+        await fetch(`${deleteUrl}/${selectedRow}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json'}
+        })
+        .catch(error => console.error("Error fetching delete", error));
+
+        await fetch(backendUrl, {
+            method: 'GET'
+        })
+        .then(response => response.json())
+        .then(data => {
+            setExercises(data);
+        })
+        .catch(error => console.error("Error fetching delete", error))
         setDeleteDialogOpen(false);
     }
+
+    useEffect(() => {
+        handleConfirmedDelete();
+    }, []);
+
     return (
         <div>
             <Dialog open={deleteDialogOpen} onClose={handleClose}>
