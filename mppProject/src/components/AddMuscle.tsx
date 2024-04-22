@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { validateMuscleForm } from '../validators/validateForm.js';
 import Exercise from '../model/Exercise.js';
+import localForage from 'localforage';
 
-export function AddMuscle({backendUrl, setExercises} : {backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
+let count = 0;
+export function AddMuscle({backendUrl, setExercises, status} : {backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
+    status: string}) {
 
     const [muscle, setMuscle] = useState({name: "", size: 0})
     const navigate = useNavigate()
@@ -21,19 +24,33 @@ export function AddMuscle({backendUrl, setExercises} : {backendUrl: string, setE
             return;
         }
 
-        await fetch(`${backendUrl}/${parseInt(params.id!)}/muscle`, {
-            method: "PUT",
-            headers: { 'Content-Type': 'application/json'},
-            body: JSON.stringify(muscle)
-        })
-        .catch(error => console.error("Error fetching add muscle", error))
-
-        await fetch(backendUrl, {
-            method: 'GET'
-        })
-        .then(response => response.json())
-        .then(data => setExercises(data))
-        .catch(error => console.error("Error fetching delete", error))
+        if (status == "OK") {
+            await fetch(`${backendUrl}/${parseInt(params.id!)}/muscle`, {
+                method: "PUT",
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify(muscle)
+            })
+            .catch(error => console.error("Error fetching add muscle", error))
+            
+            await fetch(backendUrl, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => setExercises(data))
+            .catch(error => console.error("Error fetching delete", error))
+        }
+        else {
+            const currentMuscle = {id: count++, name: muscle.name, size: muscle.size, ExerciseId: parseInt(params.id!)}
+            let cachedExercises: Exercise[] | null = await localForage.getItem("exercises");
+            for (let i = 0; i < cachedExercises!.length; ++i) {
+                if (cachedExercises![i].id == parseInt(params.id!)) {
+                    cachedExercises![i].muscles.push(currentMuscle);
+                    break;
+                }
+            }
+            setExercises(cachedExercises!);
+            localForage.setItem("exercises", cachedExercises);
+        }
         navigate(`/exercises/view/${parseInt(params.id!)}`);
     }
 

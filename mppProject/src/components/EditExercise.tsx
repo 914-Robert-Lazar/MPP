@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { validateExerciseForm } from '../validators/validateForm.js';
 import Exercise from '../model/Exercise.js';
+import localForage from 'localforage';
+import { ExerciseList } from '../router/router.js';
 
-export function EditExercise({backendUrl, setExercises} :{backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>}) {
+export function EditExercise({backendUrl, setExercises, status} :{backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
+    status: string}) {
 
     const [exercise, setExercise] = useState({name: "", type: "", level: 0})
     const navigate = useNavigate()
@@ -27,19 +30,36 @@ export function EditExercise({backendUrl, setExercises} :{backendUrl: string, se
             return;
         }
     
-        await fetch(`${backendUrl}/${parseInt(params.id!)}`, {
-            method: "PUT",
-            headers: { 'Content-Type': 'application/json'},
-            body: JSON.stringify(exercise)
-        })
-        .catch(error => console.error("Error fetching add exercise", error))
-
-        await fetch(backendUrl, {
-            method: 'GET'
-        })
-        .then(response => response.json())
-        .then(data => setExercises(data))
-        .catch(error => console.error("Error fetching delete", error))
+        if (status == "OK") {
+            await fetch(`${backendUrl}/${parseInt(params.id!)}`, {
+                method: "PUT",
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify(exercise)
+            })
+            .catch(error => console.error("Error fetching add exercise", error))
+            
+            await fetch(backendUrl, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => setExercises(data))
+            .catch(error => console.error("Error fetching delete", error))
+        }
+        else {
+            const cachedExercises: Exercise[] | null = await localForage.getItem("exercises");
+            const currentExercise = {id: parseInt(params.id!), name: exercise.name, type: exercise.type, level: exercise.level, muscles: []}
+            console.log(cachedExercises);
+            if (cachedExercises === null) {
+                localForage.setItem("exercises", ExerciseList);
+            }
+            for (let i = 0; i < cachedExercises!.length; ++i) {
+                if (cachedExercises![i].id == parseInt(params.id!)) {
+                    cachedExercises![i] = currentExercise;
+                }
+            }
+            setExercises(cachedExercises!);
+            localForage.setItem("exercises", cachedExercises);
+        }
         navigate("/exercises");
     }
 
