@@ -1,0 +1,47 @@
+#userName {
+    margin-left: 55px;
+    margin-bottom: 15px;
+    font-size: large;
+}
+
+#email {
+    margin-left: 99px;
+    margin-bottom: 15px;
+    font-size: large;
+}
+
+#password {
+    margin-left: 67px;
+    margin-bottom: 15px;
+    font-size: large;
+}
+
+#registerForm {
+    font-size: large;
+}
+
+#confirmPassword {
+    font-size: large;
+}
+
+.formButton {
+    background-color: #1a1a1a;
+    padding: 10px 20px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 1%;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    transition: border-color 0.25s;
+    margin-left: 0;
+}
+.formButton:hover {
+    border-color: #646cff;
+}
+
+
+#alreadyText {
+    margin-top: 30px;
+}

@@ -27,17 +27,21 @@ export function AddMuscle({backendUrl, setExercises, status} : {backendUrl: stri
         if (status == "OK") {
             await fetch(`${backendUrl}/${parseInt(params.id!)}/muscle`, {
                 method: "PUT",
-                headers: { 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json',
+                    Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                },
                 body: JSON.stringify(muscle)
             })
             .catch(error => console.error("Error fetching add muscle", error))
             
-            await fetch(backendUrl, {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => setExercises(data))
-            .catch(error => console.error("Error fetching delete", error))
+            // await fetch(`${backendUrl}?page=0&size=50`, {
+            //     method: 'GET'
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     setExercises(data.content);
+            // })
+            // .catch(error => console.error("Error fetching add muscle", error))
         }
         else {
             const currentMuscle = {id: count++, name: muscle.name, size: muscle.size, ExerciseId: parseInt(params.id!)}
@@ -65,8 +69,8 @@ export function AddMuscle({backendUrl, setExercises, status} : {backendUrl: stri
                 <input id="addName" name="name" type="text" value={muscle.name} onChange={handleInputChange}></input><br/>
                 <label htmlFor="addSize">Size: </label>
                 <input type="number" id="addSize" name="size" value={muscle.size} onChange={handleInputChange}></input>
-                <input type="button" id="formButton" value="Cancel" onClick={handleCancelClick}></input>
-                <input type="submit" id="formButton" value="Add"></input>
+                <input type="button" className="formButton" value="Cancel" onClick={handleCancelClick}></input>
+                <input type="submit" className="formButton" value="Add"></input>
             </form>
         </div>
   );

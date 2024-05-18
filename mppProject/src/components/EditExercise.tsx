@@ -5,8 +5,8 @@ import Exercise from '../model/Exercise.js';
 import localForage from 'localforage';
 import { ExerciseList } from '../router/router.js';
 
-export function EditExercise({backendUrl, setExercises, status} :{backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
-    status: string}) {
+export function EditExercise({backendUrl, setExercises, status, exercises} :{backendUrl: string,
+    setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>, status: string, exercises: Exercise[]}) {
 
     const [exercise, setExercise] = useState({name: "", type: "", level: 0})
     const navigate = useNavigate()
@@ -33,22 +33,38 @@ export function EditExercise({backendUrl, setExercises, status} :{backendUrl: st
         if (status == "OK") {
             await fetch(`${backendUrl}/${parseInt(params.id!)}`, {
                 method: "PUT",
-                headers: { 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json',
+                    Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                },
                 body: JSON.stringify(exercise)
             })
-            .catch(error => console.error("Error fetching add exercise", error))
-            
-            await fetch(backendUrl, {
-                method: 'GET'
-            })
             .then(response => response.json())
-            .then(data => setExercises(data))
-            .catch(error => console.error("Error fetching delete", error))
+            .then(data => {
+                console.log(data);
+                exercises.map((exercise) => {
+                    if (exercise.id == parseInt(params.id!)) {
+                        exercise.name = data.name;
+                        exercise.level = data.level;
+                        exercise.type = data.type;
+                    }
+                })
+                setExercises(exercises);
+            })
+            .catch(error => console.error("Error fetching edit exercise", error))
+            
+            // await fetch(`${backendUrl}?page=0&size=50`, {
+            //     method: 'GET'
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     setExercises(data.content);
+            // })
+            // .catch(error => console.error("Error fetching edit exercise", error))
         }
         else {
             const cachedExercises: Exercise[] | null = await localForage.getItem("exercises");
-            const currentExercise = {id: parseInt(params.id!), name: exercise.name, type: exercise.type, level: exercise.level, muscles: []}
-            console.log(cachedExercises);
+            const currentExercise = {id: parseInt(params.id!), name: exercise.name, type: exercise.type, level: exercise.level, numberOfMuscles: 0, muscles: []}
+            
             if (cachedExercises === null) {
                 localForage.setItem("exercises", ExerciseList);
             }
@@ -81,8 +97,8 @@ export function EditExercise({backendUrl, setExercises, status} :{backendUrl: st
                 </select><br/>
                 <label htmlFor="addLevel">Level: </label>
                 <input type="number" id="addLevel" name="level" value={exercise.level} onChange={handleInputChange}></input>
-                <input type="button" id="formButton" value="Cancel" onClick={handleCancelClick}></input>
-                <input type="submit" id="formButton" value="Edit"></input>
+                <input type="button" className="formButton" value="Cancel" onClick={handleCancelClick}></input>
+                <input type="submit" className="formButton" value="Edit"></input>
             </form>
         </div>
   )

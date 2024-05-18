@@ -13,6 +13,9 @@ import { StompSessionProvider } from "react-stomp-hooks";
 import { AddMuscle } from "../components/AddMuscle";
 import { EditMuscle } from "../components/EditMuscle";
 import axios from "axios";
+import Menu from "../components/Menu";
+import Register from "../components/Register";
+import Login from "../components/Login";
 
 export const ExerciseList: Exercise[] = []
 
@@ -21,12 +24,16 @@ function AppRouter() {
     const backendUrl = "http://localhost:8080/api";
 
     const [status, setStatus] = useState("Server is down");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+
+    const [index, setIndex] = useState(JSON.parse(localStorage.getItem("scrollIndex")!));
 
     async function loadData() {
         if (navigator.onLine) {
             let isDown = false;
-            await axios.get("http://localhost:8080/status")
+            await axios.get("http://localhost:8080/status", {
+                headers: { Authorization: "Bearer " + sessionStorage.getItem("bearerToken") }
+            })
             .catch(async error => {
                 console.log(error);
                 setStatus("Server is down");
@@ -39,12 +46,15 @@ function AppRouter() {
             if (!isDown) {
                 setStatus("OK");
                 setLoading(true);
-                fetch(`${backendUrl}/exercises`, {
-                    method: 'GET'
+                fetch(`${backendUrl}/exercises?page=0&size=50`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
-                    setExercises(data);
+                    setExercises(data.content);
                     setLoading(false);
                 })
                 .catch(error => console.error("Error fetching exercises", error))
@@ -57,35 +67,39 @@ function AppRouter() {
                 setExercises(loadedExercises!);
             }
         }
+        localStorage.setItem("scrollIndex", JSON.stringify(1));
+        setIndex(JSON.parse(localStorage.getItem("scrollIndex")!));
     }
 
     useEffect(() => {
         loadData();
     }, [])
 
-    useEffect(() => {
-        const checkAvailability = async () => {
-            if (navigator.onLine) {
-                let isDown = false;
-                await axios.get("http://localhost:8080/status")
-                .catch(async error => {
-                    console.log(error);
-                    setStatus("Server is down");
-                    isDown = true;
-                });
-                if (!isDown) {
-                    setStatus("OK");
-                }
-            }
-            else {
-                setStatus("No internet");
-            }
-        }
+    // useEffect(() => {
+    //     const checkAvailability = async () => {
+    //         if (navigator.onLine) {
+    //             let isDown = false;
+    //             await axios.get("http://localhost:8080/status", {
+    //                 headers: { Authorization: "Bearer " + sessionStorage.getItem("bearerToken") }
+    //             })
+    //             .catch(async error => {
+    //                 console.log(error);
+    //                 setStatus("Server is down");
+    //                 isDown = true;
+    //             });
+    //             if (!isDown) {
+    //                 setStatus("OK");
+    //             }
+    //         }
+    //         else {
+    //             setStatus("No internet");
+    //         }
+    //     }
 
-        const intervalId = setInterval(checkAvailability, 5000);
+    //     const intervalId = setInterval(checkAvailability, 5000);
 
-        return () => clearInterval(intervalId);
-    }, [status])
+    //     return () => clearInterval(intervalId);
+    // }, [status])
 
     useEffect(() => {
         if (status == "OK") {
@@ -110,6 +124,7 @@ function AppRouter() {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
+                        Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
                     },
                     body: JSON.stringify({name: locallyStoredExercises[i].name, type: locallyStoredExercises[i].type, 
                         level: locallyStoredExercises[i].level})
@@ -118,10 +133,12 @@ function AppRouter() {
                 })
                 .then(response => response.json())
                 .then(async (data) => {
-                    for (let j = 0; j < locallyStoredExercises[i].muscles.length; ++j) {
+                    for (let j = 0; j < locallyStoredExercises[i].numberOfMuscles!; ++j) {
                         await fetch(`${backendUrl}/exercises/${data.id}/muscle`, {
                             method: "PUT",
-                            headers: { 'Content-Type': 'application/json'},
+                            headers: { 'Content-Type': 'application/json',
+                                Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                            },
                             body: JSON.stringify({name: locallyStoredExercises[i].muscles[j].name, size: locallyStoredExercises[i].muscles[j].size})
                         })
                         .catch(error => console.error("Error fetching load from local muscle", error))
@@ -139,21 +156,25 @@ function AppRouter() {
             <BrowserRouter>
                 <Suspense fallback={<></>}>
                     <Routes>
-                        <Route path="/" element={<Navigate replace to="/exercises"/>} />
+                        <Route path="/" element={<Navigate replace to="/menu"/>} />
+                        <Route path="/menu" element={<Menu/>}/>
+                        <Route path="/register" element={<Register/>}/>
+                        <Route path="/login" element={<Login></Login>}/>
                         <Route path="/exercises"
-                            element={<StompSessionProvider url={'http://localhost:8080/ws-endpoint'}>
+                            element={
                                         <Workout exercises={exercises} backendUrl={`${backendUrl}/exercises`} setExercises={setExercises}
-                                            status={status} loading={loading}/>
-                                    </StompSessionProvider>}
+                                            status={status} loading={loading} index={index} setIndex={setIndex}/>
+                                    }
                         />
                         <Route path="/exercises/add"
                             element={<AddExercise backendUrl={`${backendUrl}/exercises`} setExercises={setExercises} status={status}/>}
                         />
                         <Route path="/exercises/edit/:id"
-                            element={<EditExercise backendUrl={`${backendUrl}/exercises`} setExercises={setExercises} status={status}/>}
+                            element={<EditExercise backendUrl={`${backendUrl}/exercises`} setExercises={setExercises} status={status}
+                                exercises={exercises}/>}
                         />
                         <Route path="/exercises/view/:id"
-                            element={<ViewExercise backendUrl={backendUrl} setExercises={setExercises} status={status}/>}
+                            element={<ViewExercise backendUrl={backendUrl} exercises={exercises} setExercises={setExercises} status={status}/>}
                         />
                         <Route path="/exercises/static"
                             element={<Chart exercises={exercises}/>}
@@ -164,6 +185,7 @@ function AppRouter() {
                         <Route path="/exercises/view/:exerciseid/edit/:muscleid"
                             element={<EditMuscle backendUrl={backendUrl} setExercises={setExercises} status={status}/>}
                         />
+                        
                     </Routes>
                 </Suspense>
             </BrowserRouter>

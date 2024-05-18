@@ -5,11 +5,13 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Exercise from '../model/Exercise';
 import localForage from 'localforage';
+import Muscle from '../model/Muscle';
 
-export function DeleteDialog({deleteDialogOpen, setDeleteDialogOpen, selectedRow, backendUrl, deleteUrl, setExercises, status, exerciseId} : 
+export function DeleteDialog({deleteDialogOpen, setDeleteDialogOpen, selectedRow, deleteUrl, exercises, setExercises, muscles, setMuscles, 
+    status, exerciseId} : 
     {deleteDialogOpen: boolean, setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>, 
-        selectedRow: number, backendUrl: string, deleteUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
-        status: string, exerciseId: number}) {
+        selectedRow: number, deleteUrl: string, exercises: Exercise[], setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
+        muscles: Muscle[], setMuscles: React.Dispatch<React.SetStateAction<Muscle[]>>, status: string, exerciseId: number}) {
             
     function handleClose() {
         setDeleteDialogOpen(false);
@@ -17,20 +19,35 @@ export function DeleteDialog({deleteDialogOpen, setDeleteDialogOpen, selectedRow
 
     async function  handleConfirmedDelete() {
         if (status == "OK") {
+            console.log(`${deleteUrl}/${selectedRow}`);
             await fetch(`${deleteUrl}/${selectedRow}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json'}
+                headers: { 'Content-Type': 'application/json',
+                    Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                }
             })
             .catch(error => console.error("Error fetching delete", error));
             
-            await fetch(backendUrl, {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => {
-                setExercises(data);
-            })
-            .catch(error => console.error("Error fetching delete", error))
+            // await fetch(`${backendUrl}?page=0&size=50`, {
+            //     method: 'GET'
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     setExercises(data.content);
+            // })
+            // .catch(error => console.error("Error fetching delete", error))
+            if (deleteUrl == "http://localhost:8080/api/exercises") {
+                setExercises(exercises.filter((exercise) => exercise.id != selectedRow));
+            }
+            else {
+                setMuscles(muscles.filter((muscle) => muscle.id != selectedRow));
+                exercises.map((exercise) => {
+                    if (exercise.id == exerciseId) {
+                        exercise.numberOfMuscles!--;
+                    }
+                });
+                setExercises(exercises);
+            }
         }
         else {
             let cachedExercises: Exercise[] | null = await localForage.getItem("exercises");

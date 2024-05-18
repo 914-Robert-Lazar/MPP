@@ -3,28 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import Exercise from "../model/Exercise";
 import "./Workout.css";
 import { DeleteDialog } from "./DeleteEntity";
-import { TablePagination, tablePaginationClasses as classes} from "@mui/material";
-import {styled} from '@mui/system';
-import Stomp from 'stompjs';
+import InfiniteScroll from "react-infinite-scroll-component";
 
 function ExerciseTable({exerciseTable} : {exerciseTable: JSX.Element[]}) {
-    const [page, setPage] = useState(0)
-    const [rowsPerPage, setRowsPerPage] = useState(5);
-
-    const handlePageChange = (
-        event: React.MouseEvent<HTMLButtonElement> | null,
-        newPage: number,
-        ) => {
-            setPage(newPage);
-        };
-
-    const handleChangeRowsPerPage = (
-        event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-        ) => {
-            setRowsPerPage(parseInt(event.target.value, 10));
-            setPage(0);
-        };
-
     return (
         <div>
             <table>
@@ -38,51 +19,41 @@ function ExerciseTable({exerciseTable} : {exerciseTable: JSX.Element[]}) {
                     </tr>
                 </thead>
                 <tbody>
-                    {(rowsPerPage > 0
-                        ? exerciseTable.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                        : exerciseTable)}
+                    {exerciseTable}
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <CustomTablePagination className="pagination"
-                            rowsPerPageOptions={[5, 10, 50, 100]}
-                            colSpan={5}
-                            count={exerciseTable.length}
-                            rowsPerPage={rowsPerPage}
-                            page={page}
-                            onPageChange={handlePageChange}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
-                        />
-                    </tr>
-                </tfoot>
             </table>
         </div>
     );
 }
 
-const CustomTablePagination = styled(TablePagination)(
-    ({theme}) => `
-    & .${classes.toolbar}{
-        color: white;
-        font-size: large;
-    }
-
-    & .${classes.selectLabel} {
-        font-size: large;
-    }
-
-    & .${classes.displayedRows} {
-        font-size: large;
-    }
-
-    & .${classes.actions} {
-        font-size: large;
-    }
-    `,
-);
-
-function WorkoutExercises({exerciseTable, loading} : {exerciseTable: JSX.Element[], loading: boolean}) {
+function WorkoutExercises({backendUrl, exerciseTable, loading, exercises, setExercises, index, setIndex} : {backendUrl: string, exerciseTable: JSX.Element[], 
+    loading: boolean, exercises: Exercise[], setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>
+    index: number, setIndex: React.Dispatch<React.SetStateAction<number>>}) {
     const navigate = useNavigate()
+    const [hasMore, setHasMore] = useState(true);
+
+    const fetchMoreData = async () => {
+        await fetch(`${backendUrl}?page=${index}&size=50`, {
+            method: 'GET',
+            headers: { Authorization: "Bearer " + sessionStorage.getItem("bearerToken") }
+        })
+            .then(response => response.json())
+            .then(data => {
+                setExercises((prevExercises) => [...prevExercises, ...data.content]);
+
+                data.content.length > 0 ? setHasMore(true) : setHasMore(false);
+            })
+            .catch(error => console.error("Error fetching exercises", error));
+        
+        console.log(index);
+        localStorage.setItem("scrollIndex", JSON.stringify(index + 1));
+        setIndex((prevIndex: number) => prevIndex + 1);
+    }
+
+    function handleLogout(): void {
+        sessionStorage.removeItem("bearerToken");
+        navigate("/");
+    }
     
     if (loading) {
         return (
@@ -92,15 +63,25 @@ function WorkoutExercises({exerciseTable, loading} : {exerciseTable: JSX.Element
         )
     }
     else {
+        
+
         return (
             <div>
-                <ExerciseTable exerciseTable={exerciseTable}/>
                 <div className="addButton">
                     <button>
                         <Link to="/exercises/add">Add Exercise</Link>
                     </button>
                 </div>
                 <button id="chartButton" onClick={() => navigate("/exercises/static")}>Chart</button>
+                <button id="logoutButton" onClick={handleLogout}>Log out</button>
+                <InfiniteScroll
+                    dataLength={exercises.length}
+                    next={fetchMoreData}
+                    hasMore={hasMore}
+                    loader={<h2>Loading...</h2>}
+                >
+                    <ExerciseTable exerciseTable={exerciseTable}/>
+                </InfiniteScroll>
             </div>
         );
     }
@@ -139,8 +120,8 @@ function Statusbar({status} : {status: string}) {
     }
 }
 
-function Workout({exercises, setExercises, backendUrl, status, loading}: {exercises: Exercise[], setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>, 
-    backendUrl: string, status: string, loading: boolean}) {
+function Workout({exercises, setExercises, backendUrl, status, loading, index, setIndex}: {exercises: Exercise[], setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>, 
+    backendUrl: string, status: string, loading: boolean, index: number, setIndex: React.Dispatch<React.SetStateAction<number>>}) {
     const navigate = useNavigate()
     
 
@@ -156,13 +137,14 @@ function Workout({exercises, setExercises, backendUrl, status, loading}: {exerci
     const [filterText, setFilterText] = useState("");
 
     function createExerciseTable(exercises: Exercise[]) {
+        
         return exercises.filter((exercise) => exercise.name.toLowerCase().indexOf(filterText.toLowerCase()) != -1).map(function(exercise) { 
             return (
             <tr key={exercise.id}>
                 <td>{exercise.name}</td>
                 <td>{exercise.type}</td>
                 <td>{exercise.level}</td>
-                <td>{exercise.muscles.length}</td>
+                <td>{exercise.numberOfMuscles}</td>
                 <td>
                     <button onClick={() => handleEditClick(exercise.id)}>Edit</button>
                     <button onClick={() => handleDeleteClick(exercise.id)}>Delete</button>
@@ -175,30 +157,31 @@ function Workout({exercises, setExercises, backendUrl, status, loading}: {exerci
     const [selectedRow, setSelectedRow] = useState(-1);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
-        const socket = new WebSocket('ws://localhost:8080/ws-endpoint');
-        const stompClient = Stomp.over(socket);
+    // useEffect(() => {
+    //     const socket = new WebSocket('ws://localhost:8080/ws-endpoint');
+    //     const stompClient = Stomp.over(socket);
 
-        stompClient.connect({}, () => {
-            stompClient.subscribe("/topic/generatedExercise", () => {
-                fetch(backendUrl, {
-                    method: 'GET'
-                })
-                    .then(response => response.json())
-                    .then(data => setExercises(data))
-                    .catch(error => console.error("Error fetching exercises", error))
-            })
-        })
-    }, []);
+    //     stompClient.connect({}, () => {
+    //         stompClient.subscribe("/topic/generatedExercise", () => {
+    //             fetch(`${backendUrl}?page=0&size=50`, {
+    //                 method: 'GET'
+    //             })
+    //                 .then(response => response.json())
+    //                 .then(data => setExercises(data.content))
+    //                 .catch(error => console.error("Error fetching exercises", error))
+    //         })
+    //     })
+    // }, []);
     
     return (
         <div>
                 <Statusbar status={status}/>
                 <h2>Workout Exercises</h2>
                 <SearchBar filterText={filterText} setFilterText={setFilterText}/>
-                <WorkoutExercises exerciseTable={createExerciseTable(exercises)} loading={loading}/>
+                <WorkoutExercises exerciseTable={createExerciseTable(exercises)} loading={loading} exercises={exercises}
+                    backendUrl={backendUrl} setExercises={setExercises} index={index} setIndex={setIndex}/>
                 <DeleteDialog deleteDialogOpen={deleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} selectedRow={selectedRow}
-                    backendUrl={backendUrl} deleteUrl={backendUrl} setExercises={setExercises} status={status} exerciseId={selectedRow}/>
+            deleteUrl={backendUrl} setExercises={setExercises} status={status} exerciseId={selectedRow} exercises={exercises} muscles={[]} setMuscles={() => {}}/>
         </div>
     )
 }

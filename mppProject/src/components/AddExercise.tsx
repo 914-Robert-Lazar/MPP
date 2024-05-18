@@ -4,13 +4,14 @@ import { validateExerciseForm } from '../validators/validateForm.js';
 import Exercise from '../model/Exercise.js';
 import localForage from 'localforage';
 import { ExerciseList } from '../router/router.js';
+import Muscle from '../model/Muscle.js';
 
 let count = 0;
 
 export function AddExercise({backendUrl, setExercises, status} : {backendUrl: string, setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
     status: string}) {
 
-    const [exercise, setExercise] = useState({name: "", type: "", level: 0})
+    const [exercise, setExercise] = useState({name: "", type: "", level: 0, numberOfMuscles: 0, muscles: [] as Muscle[]})
     const navigate = useNavigate()
 
     const handleInputChange = (event: React.FormEvent<HTMLInputElement>) => {
@@ -33,23 +34,19 @@ export function AddExercise({backendUrl, setExercises, status} : {backendUrl: st
         if (status == "OK") {
             await fetch(backendUrl, {
                 method: "POST",
-                headers: { 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json',
+                    Authorization: "Bearer " + sessionStorage.getItem("bearerToken")
+                },
                 body: JSON.stringify(exercise)
             })
             .catch(error => console.error("Error fetching add exercise", error))
-    
-            await fetch(backendUrl, {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => setExercises(data))
-            .catch(error => console.error("Error fetching delete", error))
+
         }
         else {
-            const currentExercise = {id: count++, name: exercise.name, type: exercise.type, level: exercise.level, muscles: []}
+            const currentExercise = {id: count++, name: exercise.name, type: exercise.type, level: exercise.level, numberOfMuscles: 0, muscles: []}
             setExercises(prevExercises => [...prevExercises, currentExercise]);
             const cachedExercises: Exercise[] | null = await localForage.getItem("exercises");
-            console.log(cachedExercises);
+            
             if (cachedExercises === null) {
                 localForage.setItem("exercises", ExerciseList);
             }
@@ -76,8 +73,8 @@ export function AddExercise({backendUrl, setExercises, status} : {backendUrl: st
                 </select><br/>
                 <label htmlFor="addLevel">Level: </label>
                 <input type="number" id="addLevel" name="level" value={exercise.level} onChange={handleInputChange}></input>
-                <input type="button" id="formButton" value="Cancel" onClick={handleCancelClick}></input>
-                <input type="submit" id="formButton" value="Add"></input>
+                <input type="button" className="formButton" value="Cancel" onClick={handleCancelClick}></input>
+                <input type="submit" className="formButton" value="Add"></input>
             </form>
         </div>
   );

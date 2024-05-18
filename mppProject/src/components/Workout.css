@@ -80,7 +80,7 @@ width: 15%;
     margin-right: 70px;
 }
 
-#formButton {
+.formButton {
 background-color: #1a1a1a;
 margin-left: 7%;
 padding: 10px 20px;
@@ -96,6 +96,10 @@ transition: border-color 0.25s;
 
 #addButton:hover {
 border-color: #646cff;
+}
+
+.formButton:hover {
+    border-color: #646cff;
 }
 
 .deleteForm {
@@ -135,6 +139,7 @@ margin-bottom: 1px;
 #chartButton {
     font-size: large;
     margin-top: 20px;
+    margin-bottom: 20px;
 }
 
 #backToMenu {
@@ -145,4 +150,9 @@ margin-bottom: 1px;
 #statusMessage {
     font-size: x-large;
     color: red;
+}
+
+#logoutButton {
+    margin-left: 50px;
+    font-size: large;
 }

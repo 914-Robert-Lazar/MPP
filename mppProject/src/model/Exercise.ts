@@ -5,5 +5,6 @@ export default interface Exercise {
     name: string;
     type: string;
     level: number;
+    numberOfMuscles: number | null;
     muscles: Muscle[];
 }
